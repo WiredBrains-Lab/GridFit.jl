@@ -70,7 +70,7 @@ GridOpt(grid::Grid,edges::Edges,fixed_points::Dict{Int,Vector{Float64}}=Dict{Int
 
 coord_dist(s::GridOpt,a::Int,b::Int) = norm(s.grid_coords[a] .- s.grid_coords[b])
 
-function init_coords!(s::GridOpt,start_coords::Dict)
+function init_coords!(s::GridOpt,start_coord::Vector{T}) where T<:Real
 	grid_nums = s.grid.layout[:]
 
 	grid_coords = [grid_ii(s.grid,i) for i in grid_nums]

@@ -42,6 +42,13 @@ function writegrid(anat_fname::String,grid_coords::Dict,fname::String,values::Un
 	end
 end
 
+"""
+	function writegrid(grid_coords::Dict,fname::String,values::Union{Real,Dict}=1.;r::Float64=2.)
+
+Writes the given coordinates as spheres of radius `r` and value `values` to a NIfTI file `fname`. Currently not reliable,
+and I'm not sure why. I don't know enough about the NIfTI file format to fully debug this. For now I'm using the alternative
+function `writegrid_afni`, which just passes to coordinates to an AFNI program.
+"""
 function writegrid(grid_coords::Dict,fname::String,values::Union{Real,Dict}=1.;r::Float64=2.)
 	out_dset = niread(fname)
 	out_dat = Float32.(out_dset.raw)
@@ -49,10 +56,12 @@ function writegrid(grid_coords::Dict,fname::String,values::Union{Real,Dict}=1.;r
 	writegrid(out_dset,out_dat,grid_coords,fname,values;r)
 end
 
-writegrid(s::GridOpt,fname::String;r=2) = writegrid(subj_data[s.subj]["anat"],s.grid_coords,fname;r)
+"""
+	function writegrid_afni(anat_fname::String,grid_coords::Dict,fname::String,values::Union{Real,Dict}=1.;r::Float64=2.)
 
-writegrid_afni(s::GridOpt,fname::String;r::Float64=2.) = writegrid_afni(subj_data[s.subj]["anat"],s.grid_coords,fname;r)
-
+Similar to `writegrid`, but uses the AFNI program `3dUndump` instead of the NIfTI.jl library. I've found this function
+to be more reliable (although it has an external dependency).
+"""
 function writegrid_afni(anat_fname::String,grid_coords::Dict,fname::String,values::Union{Real,Dict}=1.;r::Float64=2.)
 	vals = []
 	for (k,c) in grid_coords

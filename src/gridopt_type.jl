@@ -15,7 +15,7 @@ struct Edges{T<:Real}
 end
 
 function Edges(coords::Vector{Vector{T}}) where T<:Real
-	tree = KDTree(coords)
+	tree = KDTree(hcat(coords...))
 	Edges(coords,tree)
 end
 

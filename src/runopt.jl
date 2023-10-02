@@ -4,7 +4,7 @@ Functions to perform the actual grid optimization
 
 include("gridopt_type.jl")
 
-using Optim
+using Optim,Statistics
 
 # Cost functions:
 

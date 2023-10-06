@@ -1,5 +1,3 @@
-include("gridopt_type.jl")
-
 using NIfTI
 
 function make_dot(dset,ii::Vector{T},r::Int,v::Real=1) where T<:Real

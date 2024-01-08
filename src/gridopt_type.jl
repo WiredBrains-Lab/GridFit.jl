@@ -27,7 +27,7 @@ function Edges(data::AbstractArray{T,3},affine::Matrix{K}) where {T<:Real,K<:Rea
 			for y=-1:1
 				for z=-1:1
 					j = [ii.I[1]+x,ii.I[2]+y,ii.I[3]+z]
-					checkbounds(Bool,data,j...) && data[j...] == 0. && return true
+					checkbounds(Bool,data,j...) && data[j...] <= 0. && return true
 				end
 			end
 		end

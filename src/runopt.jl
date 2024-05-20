@@ -27,17 +27,18 @@ function neighbor_dist(s::GridOpt,i::Int,r::Int=2)
 	mean(2 .^ dists)
 end
 
-function fixed_dist(s::GridOpt)
+function fixed_dist(fixed_points::Dict,grid_coords::Dict)
 	dists = Float64[]
 
-    for (p,v) in s.fixed_points
-		if haskey(s.grid_coords,p)
-			push!(dists,norm(s.grid_coords[p] .- v))
+    for (p,v) in fixed_points
+		if haskey(grid_coords,p)
+			push!(dists,norm(grid_coords[p] .- v))
 		end
 	end
 	mean(dists)
 end
 
+fixed_dist(s::GridOpt) = fixed_dist(s.fixed_points,s.grid_coords)
 
 function edge_dist(s::GridOpt,i::Int)
 	(ii,dd) = knn(s.edges.tree,s.grid_coords[i],1)
@@ -82,13 +83,10 @@ end
 
 Calculate `fixed_dist` after applying a rigid transformation.
 """
-function rigid_dist(s::GridOpt,x::Vector{Float64},a)
-	ss = deepcopy(s)
-	translate!(ss,x[1:3]...)
-	rotate!(ss,x[4:6]...)
+function rigid_dist(s::GridOpt,x::Vector{Float64},a::Vector{Float64})
+	rot_coords = rotate(s,x[1:3]...,a)
 
-	push!(a,copy(ss.grid_coords))
-	return fixed_dist(ss)
+	return fixed_dist(s.fixed_points,rot_coords)
 end
 
 """
@@ -97,11 +95,12 @@ end
 A combination of several cost functions to optimize several at once.
 """
 function full_dist(s::GridOpt,i::Int,x::Vector{Float64};neighbor=15.,fixed=10.,edge=1.)
-	ss = deepcopy(s)
+	s.grid_coords[i] .+= x
 
-	ss.grid_coords[i] .+= x
+	dist = neighbor*neighbor_dist(s,i) + fixed*fixed_dist(s) + edge*edge_dist(s,i) + angle_dist(s,i)
 
-	return neighbor*neighbor_dist(ss,i) + fixed*fixed_dist(ss) + edge*edge_dist(ss,i) + angle_dist(ss,i)
+    s.grid_coords[i] .-= x
+    return dist
 end
 
 function full_dist(s::GridOpt;neighbor=15.,fixed=10.,edge=1.)
@@ -120,21 +119,19 @@ end
 
 
 """
-    rigid_fit!(s::GridOpt)
+    rigid_fit!(s::GridOpt,fixed::Vector{Float64})
 
 Performs a rigid fit (doesn't move any electrodes relative to
-one another), based on the cost of the fixed points.
+one another), by rotating around the given start point.
 
 This function works well as a first approximation to get the 
-grid in the approximate location based on the fixed points.
+grid in the approximate location based on the given fixed point.
 """
 function rigid_fit!(s::GridOpt)
-	saves = []
-	o = optimize(x->rigid_dist(s,x,saves),zeros(6),Optim.Options(iterations=3_000_000,store_trace=true))
+	o = optimize(x->rigid_dist(s,x,s.start_coord),zeros(3),GradientDescent())
 	x = Optim.minimizer(o)
-	translate!(s,x[1:3]...)
-	rotate!(s,x[4:6]...)
-	return saves
+	rotate!(s,x[1:3]...,s.start_coord)
+    return nothing
 end
 
 

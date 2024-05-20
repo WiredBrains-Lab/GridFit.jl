@@ -64,36 +64,49 @@ mutable struct GridOpt
 	edges::Edges
 	grid_coords::Dict{Int,Vector{Float64}}
     fixed_points::Dict{Int,Vector{Float64}}
+    start_coord::Vector{Float64}
 end
 
-GridOpt(grid::Grid,edges::Edges,fixed_points::Dict{Int,Vector{Float64}}=Dict{Int,Vector{Float64}}()) = GridOpt(grid,edges,Dict{Int,Vector{Float64}}(),fixed_points)
+GridOpt(grid::Grid,edges::Edges,fixed_points::Dict{Int,Vector{Float64}}=Dict{Int,Vector{Float64}}()) = GridOpt(grid,edges,Dict{Int,Vector{Float64}}(),fixed_points,Float64[])
 
-coord_dist(s::GridOpt,a::Int,b::Int) = norm(s.grid_coords[a] .- s.grid_coords[b])
+coord_dist(grid_coords::Dict,a::Int,b::Int) = norm(grid_coords[a] .- grid_coords[b])
+coord_dist(s::GridOpt,a::Int,b::Int) = coord_dist(s.grid_coords,a,b)
 
-function init_coords!(s::GridOpt,start_coord::Vector{T}) where T<:Real
-	grid_nums = s.grid.layout[:]
+function init_coords!(s::GridOpt)
+    start_i = first(keys(s.fixed_points))
+    start_coord = s.fixed_points[start_i]
 
-	grid_coords = [grid_ii(s.grid,i) for i in grid_nums]
-	grid_realcoords = [[0.,i[2]-1,i[1]-1] .* s.grid.spacing for i in grid_coords]
-	grid_shiftcoords = [i .+ start_coord for i in grid_realcoords]
-	grid_coords = Dict{Int,Vector{Float64}}()
-	for i in 1:length(grid_nums)
-		grid_coords[grid_nums[i]] = grid_shiftcoords[i]
-	end
+    grid_coords = Dict{Int,Vector{Float64}}()
 
-	s.grid_coords = grid_coords
+    for k in s.grid.layout[:]
+        dd = (grid_ii(s.grid,k) .- grid_ii(s.grid,start_i)) .* s.grid.spacing
+        grid_coords[k] = [0.,dd[2],dd[1]] .+ start_coord
+    end
+    
+    s.start_coord = start_coord
+    s.grid_coords = grid_coords
 end
 
-function rotate!(s::GridOpt,xa::K,ya::L,za::M) where {K<:Real,L<:Real,M<:Real}
+function rotate!(s::GridOpt,xa::K,ya::L,za::M,axis::Vector{T}=[0.,0.,0.]) where {K<:Real,L<:Real,M<:Real,T<:Real}
 	grid_nums = sort(s.grid.layout[:])
 	grid_c = hcat([s.grid_coords[c] for c in grid_nums]...)
 
-	grid_c = rotate(grid_c,xa,ya,za)
+	grid_c = rotate(grid_c .- axis,xa,ya,za) .+ axis
 	for i in 1:length(grid_nums)
 		s.grid_coords[grid_nums[i]] = grid_c[:,i]
 	end
 
 	return s
+end
+
+function rotate(s::GridOpt,xa::K,ya::L,za::M,axis::Vector{T}=[0.,0.,0.]) where {K<:Real,L<:Real,M<:Real,T<:Real}
+    grid_nums = collect(keys(s.grid_coords))
+    
+	grid_c = reduce(hcat,[s.grid_coords[c] for c in grid_nums])
+
+	grid_c = rotate(grid_c .- axis,xa,ya,za) .+ axis
+
+    return Dict([grid_nums[i]=>grid_c[:,i] for i=1:length(grid_nums)])
 end
 
 function translate!(s::GridOpt,xt::K,yt::L,zt::M) where {K<:Real,L<:Real,M<:Real}

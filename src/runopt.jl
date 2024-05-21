@@ -193,7 +193,7 @@ numbers with a 3-item coordinate Vector.
 function run_gridopt(g::Grid,edge_dset::String,fixed_points::Dict{Int,Vector{Float64}};args...)
     edges = Edges(edge_dset)
     s = GridOpt(g,edges,fixed_points)
-    init_coords!(s,first(values(fixed_points)))
+    init_coords!(s)
 
     run_gridopt!(s;args...)
 end

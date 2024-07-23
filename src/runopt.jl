@@ -117,6 +117,27 @@ function full_dist(s::GridOpt;neighbor=15.,fixed=10.,edge=1.)
 			total=neighbor*neighbor_d + fixed*fixed_d + edge*edge_d + angle)
 end
 
+"""
+	dist_limits(dist;limits...)
+
+Returns `true` if the cost functions are in a range outside of normal values. The
+default normal values were derived by running a large number of iterations and finding
+the 95% bounds on each.
+"""
+function dist_limits(dist;
+		edge = 5.577,
+		angle = 1.009,
+		fixed = 12.668,
+		neighbor = 1.064
+	)
+	if  dist.edge>=edge ||
+		dist.angle>=angle ||
+		dist.fixed>=fixed ||
+		dist.neighbor>=neighbor
+		return true
+	end
+	return false
+end
 
 """
     rigid_fit!(s::GridOpt,fixed::Vector{Float64})
@@ -150,32 +171,54 @@ function iterate!(s::GridOpt;neighbor=1.,fixed=1.,edge=1.)
 end
 
 """
-    run_gridopt!(s::GridOpt;iters::Int=20_000,change_thresh=1e-6,change_count=20,verbose=true)
+    run_gridopt!(s::GridOpt;iters=2_000,attempts=20,change_thresh=1e-6,change_count=20,verbose=true)
 
 Run the grid optimization on the `GridOpt` object.
+
+This function will try `iters` iterations until the cost function stops decreasing by a percent change
+less than `change_thresh`. If it fails, it will try again for `attempts` times.
 """
-function run_gridopt!(s::GridOpt;iters::Int=20_000,change_thresh=1e-6,change_count=20,verbose=true)
+function run_gridopt!(s::GridOpt;iters::Int=2_000,attempts::Int=20,change_thresh=1e-6,change_count=20,verbose=true)
 	final_coords = Dict()
 
-    verbose && @info "Starting grid optimization"
-    last_d = 1e6
-    change_c = 0
-    verbose && @info "- Rigid fitting starting coordinates"
-    o = rigid_fit!(s)
-    verbose && @info "- Optimizing individual electrodes:"
-    for i=1:iters
-        verbose && @info "    - iter $i"
-        iterate!(s)
-        dd = full_dist(s)
-        verbose && @info dd
-        perc_change = 100*(last_d - dd.total) / last_d
-        verbose && @info perc_change
-        abs(perc_change) < change_thresh ? (change_c += 1) : (change_c = 0)
-        change_c>change_count && break
-        last_d = dd.total
-    end
+	for attempt=1:attempts
+		verbose && @info "Starting grid optimization (attempt $attempt)"
+		last_d = 1e6
+		change_c = 0
+		cost_fails = 0
+		succeeded = false
+		verbose && @info "- Rigid fitting starting coordinates"
+		o = rigid_fit!(s)
+		verbose && @info "- Optimizing individual electrodes:"
+		for i=1:iters
+			verbose && @info "    - iter $i"
+			iterate!(s)
+			dd = full_dist(s)
+			verbose && @info dd
+			dist_limits(dd) && (cost_fails += 1)
+			if cost_fails > 20
+				verbose && @info "    *** Failing due to abnormally high cost functions"
+				break
+			end
+			perc_change = 100*(last_d - dd.total) / last_d
+			verbose && @info perc_change
+			abs(perc_change) < change_thresh ? (change_c += 1) : (change_c = 0)
+			if change_c>change_count
+				verbose && @info "Success!!"
+				succeeded = true
+				break
+			end
+			last_d = dd.total
+		end
 
-    return s
+		succeeded && break
+	end
+	if succeeded == false
+		verbose && @info "Failed to achieve successful fit. Please try again, or tweak the parameters."
+		return nothing
+	else
+		return s
+	end
 end
 
 function run_gridopt(s::GridOpt;args...)

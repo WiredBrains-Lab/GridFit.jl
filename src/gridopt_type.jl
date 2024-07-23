@@ -43,7 +43,7 @@ function Edges(data::AbstractArray{T,3},affine::Matrix{K}) where {T<:Real,K<:Rea
     Edges(edge_coords)
 end
 
-Edges(data::NIVolume) = Edges(data.raw,getaffine(data))
+Edges(data::NIVolume) = Edges(data.raw,getaffine(data.header))
 
 Edges(fname::AbstractString) = Edges(niread(fname))
 

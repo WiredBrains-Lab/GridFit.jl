@@ -181,12 +181,13 @@ less than `change_thresh`. If it fails, it will try again for `attempts` times.
 function run_gridopt!(s::GridOpt;iters::Int=2_000,attempts::Int=20,change_thresh=1e-6,change_count=20,verbose=true)
 	final_coords = Dict()
 
+	succeeded = false
+
 	for attempt=1:attempts
 		verbose && @info "Starting grid optimization (attempt $attempt)"
 		last_d = 1e6
 		change_c = 0
 		cost_fails = 0
-		succeeded = false
 		verbose && @info "- Rigid fitting starting coordinates"
 		o = rigid_fit!(s)
 		verbose && @info "- Optimizing individual electrodes:"

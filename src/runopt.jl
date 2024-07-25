@@ -122,13 +122,13 @@ end
 
 Returns `true` if the cost functions are in a range outside of normal values. The
 default normal values were derived by running a large number of iterations and finding
-the 95% bounds on each.
+the 99.9% bounds on each.
 """
 function dist_limits(dist;
-		edge = 5.577,
-		angle = 1.009,
-		fixed = 12.668,
-		neighbor = 1.064
+		edge = 32.7359,
+		angle = 1.02313,
+		fixed = 53.6469,
+		neighbor = 1.31831
 	)
 	if  dist.edge>=edge ||
 		dist.angle>=angle ||
@@ -171,22 +171,23 @@ function iterate!(s::GridOpt;neighbor=1.,fixed=1.,edge=1.)
 end
 
 """
-    run_gridopt!(s::GridOpt;iters=2_000,attempts=20,change_thresh=1e-6,change_count=20,verbose=true)
+    run_gridopt!(s::GridOpt;iters=3_000,attempts=20,change_thresh=1e-6,change_count=20,verbose=true)
 
 Run the grid optimization on the `GridOpt` object.
 
 This function will try `iters` iterations until the cost function stops decreasing by a percent change
 less than `change_thresh`. If it fails, it will try again for `attempts` times.
 """
-function run_gridopt!(s::GridOpt;iters::Int=2_000,attempts::Int=20,change_thresh=1e-6,change_count=20,verbose=true)
+function run_gridopt!(s::GridOpt;iters::Int=3_000,attempts::Int=20,change_thresh=1e-6,change_count=20,verbose=true)
 	final_coords = Dict()
+
+	succeeded = false
 
 	for attempt=1:attempts
 		verbose && @info "Starting grid optimization (attempt $attempt)"
 		last_d = 1e6
 		change_c = 0
 		cost_fails = 0
-		succeeded = false
 		verbose && @info "- Rigid fitting starting coordinates"
 		o = rigid_fit!(s)
 		verbose && @info "- Optimizing individual electrodes:"
@@ -196,7 +197,7 @@ function run_gridopt!(s::GridOpt;iters::Int=2_000,attempts::Int=20,change_thresh
 			dd = full_dist(s)
 			verbose && @info dd
 			dist_limits(dd) && (cost_fails += 1)
-			if cost_fails > 20
+			if cost_fails > 200
 				verbose && @info "    *** Failing due to abnormally high cost functions"
 				break
 			end
